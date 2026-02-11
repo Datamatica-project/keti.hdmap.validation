@@ -73,11 +73,17 @@ function safeNumber(n, digits = 3) {
 }
 
 function KVRow({ k, v, highlight = false, danger = false }) {
-  const color = danger ? "#ff6666" : highlight ? "#00ff99" : "rgba(255,255,255,0.95)";
+  const color = danger
+    ? "#ff6666"
+    : highlight
+      ? "#00ff99"
+      : "rgba(255,255,255,0.95)";
   return (
     <>
       <div style={{ color: "rgba(255,255,255,0.7)" }}>{k}</div>
-      <div style={{ color, fontWeight: highlight || danger ? "bold" : "normal" }}>
+      <div
+        style={{ color, fontWeight: highlight || danger ? "bold" : "normal" }}
+      >
         {v}
       </div>
     </>
@@ -89,14 +95,14 @@ function StatusBadge({ status, children }) {
     status === "valid"
       ? "rgba(0, 255, 153, 0.2)"
       : status === "invalid"
-      ? "rgba(255, 102, 102, 0.2)"
-      : "rgba(255, 255, 255, 0.1)";
+        ? "rgba(255, 102, 102, 0.2)"
+        : "rgba(255, 255, 255, 0.1)";
   const textColor =
     status === "valid"
       ? "#00ff99"
       : status === "invalid"
-      ? "#ff6666"
-      : "rgba(255, 255, 255, 0.7)";
+        ? "#ff6666"
+        : "rgba(255, 255, 255, 0.7)";
 
   return (
     <span
@@ -138,77 +144,61 @@ function extractConstraints(geojsonData) {
   };
 
   // 제약 조건 정보
+  const turningRadius =
+    constraints.turningRadius ?? equipment.turningRadius ?? null;
+  const safetyMargin = constraints.safetyMargin ?? null;
   const constraintInfo = {
-    turningRadius: constraints.turningRadius || equipment.turningRadius || null,
-    safetyMargin: constraints.safetyMargin || null,
+    turningRadius,
+    safetyMargin,
     vehicleWidth: constraints.vehicleWidth || equipment.width || null,
   };
 
-  // 헤드랜드 폭 계산
+  // 헤드랜드 폭: 회전 반경 + 안전 마진 (값이 있으면 헤드랜드 폴리곤 "있음" 처리)
   let headlandWidth = null;
-  const features = geojsonData.features || [];
-  let workAreaPolygon = null;
-  let headlandPolygon = null;
-
-  for (const feature of features) {
-    const type = feature?.properties?.type;
-    if (type === "WORK_AREA" && feature.geometry?.type === "Polygon") {
-      workAreaPolygon = feature.geometry.coordinates?.[0];
-    }
-    if (type === "HEADLAND" && feature.geometry?.type === "Polygon") {
-      headlandPolygon = feature.geometry.coordinates?.[0];
-    }
+  if (turningRadius != null && safetyMargin != null) {
+    headlandWidth = turningRadius + safetyMargin;
   }
 
-  // 헤드랜드 폭 계산: (워크 에어리어 너비 - 헤드랜드 폴리곤 너비) / 2
-  if (workAreaPolygon && headlandPolygon) {
-    const getPolygonWidth = (coords) => {
-      if (!coords || coords.length < 3) return null;
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-      for (const [x, y] of coords) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-      const width = maxX - minX;
-      const height = maxY - minY;
-      return Math.min(width, height);
-    };
-
-    const workAreaWidth = getPolygonWidth(workAreaPolygon);
-    const headlandPolygonWidth = getPolygonWidth(headlandPolygon);
-    if (workAreaWidth && headlandPolygonWidth) {
-      headlandWidth = (workAreaWidth - headlandPolygonWidth) / 2;
+  // 작업 영역 폴리곤: waypointDetails에 좌표가 존재하면 "있음"
+  console.log("geojsonData", geojsonData);
+  const waypointDetails = geojsonData.features[0].geometry.coordinates;
+  const hasWorkArea = (() => {
+    if (!waypointDetails) return false;
+    if (Array.isArray(waypointDetails) && waypointDetails.length > 0) {
+      const first = waypointDetails[0];
+      if (Array.isArray(first) && first.length >= 2) return true;
+      if (
+        first &&
+        typeof first === "object" &&
+        ("x" in first || "lat" in first)
+      )
+        return true;
+      return true;
     }
-  }
+    if (waypointDetails?.coordinates?.length > 0) return true;
+    return false;
+  })();
+
+  // 헤드랜드 폴리곤: 헤드랜드 폭 값이 존재하면 "있음"
+  const hasHeadland = headlandWidth != null;
 
   return {
     machineSpecs,
     constraintInfo,
     headlandWidth,
-    hasWorkArea: !!workAreaPolygon,
-    hasHeadland: !!headlandPolygon,
+    hasWorkArea,
+    hasHeadland,
   };
 }
 
-export default function ConstraintValidationModal({ isOpen, onClose, geojsonData }) {
+export default function ConstraintValidationModal({
+  isOpen,
+  onClose,
+  geojsonData,
+}) {
   if (!isOpen) return null;
 
   const constraints = geojsonData ? extractConstraints(geojsonData) : null;
-
-  // 헤드랜드 폭 검증: 헤드랜드 폭이 차량 폭보다 크거나 같으면 통과
-  const headlandWidthValidation =
-    constraints?.headlandWidth != null && constraints?.constraintInfo?.vehicleWidth != null
-      ? (() => {
-          const isValid = constraints.headlandWidth >= constraints.constraintInfo.vehicleWidth;
-          const diff = constraints.headlandWidth - constraints.constraintInfo.vehicleWidth;
-          return { isValid, diff };
-        })()
-      : null;
 
   return (
     <div style={overlayStyle} onClick={onClose}>
@@ -320,45 +310,20 @@ export default function ConstraintValidationModal({ isOpen, onClose, geojsonData
                       : "-"
                   }
                 />
-                <KVRow
-                  k="헤드랜드 폭 검증"
-                  v={
-                    headlandWidthValidation ? (
-                      <div>
-                        <StatusBadge
-                          status={headlandWidthValidation.isValid ? "valid" : "invalid"}
-                        >
-                          {headlandWidthValidation.isValid
-                            ? "✓ 통과"
-                            : `✗ 위반 (부족: ${safeNumber(Math.abs(headlandWidthValidation.diff), 3)}m)`}
-                        </StatusBadge>
-                        <div
-                          style={{
-                            marginTop: 4,
-                            fontSize: 12,
-                            color: "rgba(255,255,255,0.6)",
-                          }}
-                        >
-                          {headlandWidthValidation.isValid
-                            ? `헤드랜드 폭이 차량 폭보다 ${safeNumber(headlandWidthValidation.diff, 3)}m 큼`
-                            : `헤드랜드 폭이 차량 폭보다 ${safeNumber(Math.abs(headlandWidthValidation.diff), 3)}m 작음`}
-                        </div>
-                      </div>
-                    ) : (
-                      "-"
-                    )
-                  }
-                />
               </div>
 
-              <h3 style={{ margin: "14px 0 8px", fontSize: 15, fontWeight: 700 }}>
+              <h3
+                style={{ margin: "14px 0 8px", fontSize: 15, fontWeight: 700 }}
+              >
                 데이터 가용성
               </h3>
               <div style={kvStyle}>
                 <KVRow
                   k="작업 영역 폴리곤"
                   v={
-                    <StatusBadge status={constraints.hasWorkArea ? "valid" : "invalid"}>
+                    <StatusBadge
+                      status={constraints.hasWorkArea ? "valid" : "invalid"}
+                    >
                       {constraints.hasWorkArea ? "✓ 있음" : "✗ 없음"}
                     </StatusBadge>
                   }
@@ -366,7 +331,9 @@ export default function ConstraintValidationModal({ isOpen, onClose, geojsonData
                 <KVRow
                   k="헤드랜드 폴리곤"
                   v={
-                    <StatusBadge status={constraints.hasHeadland ? "valid" : "invalid"}>
+                    <StatusBadge
+                      status={constraints.hasHeadland ? "valid" : "invalid"}
+                    >
                       {constraints.hasHeadland ? "✓ 있음" : "✗ 없음"}
                     </StatusBadge>
                   }
