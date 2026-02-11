@@ -38,7 +38,7 @@ function computePathLength2D(features) {
  */
 function computeLineDirection(coords) {
   if (!Array.isArray(coords) || coords.length < 2) return null;
-  
+
   if (coords.length === 2) {
     const start = coords[0];
     const end = coords[1];
@@ -46,31 +46,31 @@ function computeLineDirection(coords) {
     const dy = end[1] - start[1];
     return Math.atan2(dy, dx);
   }
-  
+
   const angles = [];
   const sampleStep = Math.max(1, Math.floor(coords.length / 10));
-  
+
   for (let i = 0; i < coords.length - 1; i += sampleStep) {
     const start = coords[i];
     const end = coords[Math.min(i + sampleStep, coords.length - 1)];
     const dx = end[0] - start[0];
     const dy = end[1] - start[1];
     const length = Math.sqrt(dx * dx + dy * dy);
-    
+
     if (length > 0.01) {
       angles.push(Math.atan2(dy, dx));
     }
   }
-  
+
   if (angles.length === 0) return null;
-  
+
   let sumX = 0;
   let sumY = 0;
   for (const angle of angles) {
     sumX += Math.cos(angle);
     sumY += Math.sin(angle);
   }
-  
+
   return Math.atan2(sumY / angles.length, sumX / angles.length);
 }
 
@@ -90,9 +90,7 @@ function angleDifference(angle1, angle2) {
 function computeParallelism(features) {
   // PATH 타입의 LineString만 필터링
   const paths = features.filter(
-    (f) =>
-      f?.geometry?.type === "LineString" &&
-      f?.properties?.type === "PATH"
+    (f) => f?.geometry?.type === "LineString" && f?.properties?.type === "PATH",
   );
 
   if (paths.length < 2) return null;
@@ -148,8 +146,7 @@ function parseGeoJSON(geoJsonData) {
     // PATH 타입의 경로만 필터링
     const pathFeatures = features.filter(
       (f) =>
-        f?.geometry?.type === "LineString" &&
-        f?.properties?.type === "PATH"
+        f?.geometry?.type === "LineString" && f?.properties?.type === "PATH",
     );
 
     // 경로 길이 계산
@@ -321,7 +318,7 @@ function App() {
     // JSON/GeoJSON 파일인지 확인
     const isJson = file.name.endsWith(".json");
     const isGeoJson = file.name.endsWith(".geojson");
-    
+
     if (!isJson && !isGeoJson) {
       setError("JSON 또는 GeoJSON 파일만 업로드 가능합니다.");
       return;
@@ -347,18 +344,21 @@ function App() {
         isGeoJson = false;
         parsedData = parseValidationJSON(jsonData);
       } else {
-        throw new Error("지원하지 않는 파일 형식입니다. 검증 JSON 또는 GeoJSON 파일을 업로드해주세요.");
+        throw new Error(
+          "지원하지 않는 파일 형식입니다. 검증 JSON 또는 GeoJSON 파일을 업로드해주세요.",
+        );
       }
 
       // 로딩 모달 표시를 위해 데이터 임시 저장
       pendingDataRef.current = { data: parsedData, isGeoJson };
-      
+
       // 로딩 모달 열기
       setIsLoadingModalOpen(true);
     } catch (err) {
       console.error("파일 처리 오류:", err);
       setError(
-        err.message || "파일을 읽는 중 오류가 발생했습니다. 파일 형식을 확인해주세요."
+        err.message ||
+          "파일을 읽는 중 오류가 발생했습니다. 파일 형식을 확인해주세요.",
       );
       setIsLoading(false);
       // 파일 입력 초기화
@@ -403,182 +403,132 @@ function App() {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ margin: "0 0 12px", fontSize: 28, fontWeight: 700, color: "#ffffff" }}>
-        HdMap 검증 보고서
-      </h1>
-      <p style={{ margin: "0 0 24px", color: "#666", fontSize: 14 }}>
-        HdMap에서 추출한 JSON 파일 또는 GeoJSON 파일을 업로드하여 영역/경로 검증 결과를 확인할 수 있습니다.
-      </p>
+    <>
+      {/* 기관 헤더 */}
+      <header className="gov-header">
+        <div className="gov-header-inner">
+          <div className="gov-header-badge">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <span>공식 검증</span>
+          </div>
+          <div className="gov-header-text">
+            <h1 className="gov-title">공간정보 데이터 검증 시스템</h1>
+            <p className="gov-subtitle">GeoJSON·검증 JSON 기반 경로 데이터의 구조적 무결성 및 품질 검증</p>
+          </div>
+        </div>
+      </header>
 
-      {/* 파일 업로드 영역 */}
-      <div
-        style={{
-          border: "2px dashed #ddd",
-          borderRadius: 8,
-          padding: "32px 24px",
-          textAlign: "center",
-          marginBottom: 24,
-          backgroundColor: "#fafafa",
-        }}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json,.geojson"
-          onChange={handleFileUpload}
-          style={{ display: "none" }}
-        />
-        {isLoading ? (
-          <>
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                border: "4px solid #f3f3f3",
-                borderTop: "4px solid #333",
-                borderRadius: "50%",
-                animation: "spin 1s linear infinite",
-                margin: "0 auto 16px",
-              }}
+      {/* 본문 */}
+      <main className="gov-main">
+        <div className="gov-container">
+          <section className="gov-card gov-card-intro">
+            <h2 className="gov-card-title">데이터 검증 신청</h2>
+            <p className="gov-card-desc">
+              검증할 JSON 또는 GeoJSON 파일을 선택하시면, 경로 무결성·평행도·간격 등 항목에 대한
+              공식 검증 결과를 확인하실 수 있습니다.
+            </p>
+          </section>
+
+          {/* 파일 업로드 영역 */}
+          <section className="gov-card gov-upload-card">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,.geojson"
+              onChange={handleFileUpload}
+              className="gov-file-input"
+              aria-label="JSON 또는 GeoJSON 파일 선택"
             />
-            <p style={{ margin: "0 0 16px", color: "#333", fontWeight: 500 }}>
-              파일을 분석하는 중...
-            </p>
-          </>
-        ) : (
-          <>
-            <div style={{ marginBottom: 16 }}>
-              <svg
-                width="48"
-                height="48"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                style={{ color: "#333", margin: "0 auto" }}
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
+            {isLoading ? (
+              <div className="gov-upload-loading">
+                <div className="gov-spinner" aria-hidden="true" />
+                <p className="gov-upload-status">파일을 분석하는 중입니다...</p>
+                <p className="gov-upload-hint">잠시만 기다려 주세요.</p>
+              </div>
+            ) : (
+              <div className="gov-upload-ready">
+                <div className="gov-upload-icon">
+                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <p className="gov-upload-label">JSON 또는 GeoJSON 파일을 선택하여 업로드하세요</p>
+                <p className="gov-upload-spec">지원 형식: .json, .geojson</p>
+                <button
+                  type="button"
+                  onClick={handleSelectFile}
+                  disabled={isLoading}
+                  className="gov-btn gov-btn-primary"
+                >
+                  파일 선택
+                </button>
+              </div>
+            )}
+          </section>
+
+          {/* 에러 메시지 */}
+          {error && (
+            <div className="gov-alert gov-alert-error" role="alert">
+              <span className="gov-alert-icon" aria-hidden="true">⚠</span>
+              {error}
             </div>
-            <p style={{ margin: "0 0 16px", color: "#333" }}>
-              JSON 또는 GeoJSON 파일을 선택하거나 드래그하여 업로드하세요
-            </p>
-            <button
-              onClick={handleSelectFile}
-              disabled={isLoading}
-              style={{
-                padding: "10px 24px",
-                borderRadius: 8,
-                border: "1px solid #333",
-                backgroundColor: "#fff",
-                color: "#1a1a1a",
-                cursor: isLoading ? "not-allowed" : "pointer",
-                fontSize: 14,
-                fontWeight: 500,
-                opacity: isLoading ? 0.6 : 1,
-        }}
-      >
-              파일 선택
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* 에러 메시지 */}
-      {error && (
-        <div
-          style={{
-            padding: "12px 16px",
-            backgroundColor: "#fee",
-            border: "1px solid #fcc",
-            borderRadius: 8,
-            color: "#c33",
-            marginBottom: 24,
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {/* 검증 데이터 정보 표시 */}
-      {validationData && !isOpen && (
-        <div
-          style={{
-            padding: "16px",
-            backgroundColor: "#f0f9ff",
-            border: "1px solid #bae6fd",
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#1a1a1a" }}>
-            ✓ 파일이 성공적으로 로드되었습니다
-          </p>
-          {validationData.metadata && (
-            <p style={{ margin: 0, fontSize: 12, color: "#444" }}>
-              추출 일시: {new Date(validationData.metadata.extractedAt).toLocaleString("ko-KR")}
-              {validationData.metadata.version && ` | 버전: ${validationData.metadata.version}`}
-            </p>
           )}
-          <button
-            onClick={() => setIsOpen(true)}
-            style={{
-              marginTop: 12,
-              padding: "8px 16px",
-              borderRadius: 6,
-              border: "1px solid #333",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            검증 보고서 보기
-          </button>
-        </div>
-      )}
 
-      {/* GeoJSON 파일 정보 표시 */}
-      {geojsonData && !isConstraintModalOpen && (
-        <div
-          style={{
-            padding: "16px",
-            backgroundColor: "#f0f9ff",
-            border: "1px solid #bae6fd",
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#1a1a1a" }}>
-            ✓ GeoJSON 파일이 성공적으로 로드되었습니다
-          </p>
-          {geojsonData.properties && (
-            <p style={{ margin: 0, fontSize: 12, color: "#444" }}>
-              파일 형식: GeoJSON
-              {geojsonData.properties.name && ` | 이름: ${geojsonData.properties.name}`}
-              {geojsonData.properties.createdAt && ` | 생성일: ${new Date(geojsonData.properties.createdAt).toLocaleString("ko-KR")}`}
-            </p>
+          {/* 검증 데이터 로드 완료 (JSON) */}
+          {validationData && !isOpen && (
+            <div className="gov-card gov-result-preview">
+              <p className="gov-result-heading">
+                <span className="gov-result-icon" aria-hidden="true">✓</span>
+                파일이 정상적으로 로드되었습니다
+              </p>
+              {validationData.metadata && (
+                <p className="gov-result-meta">
+                  추출 일시: {new Date(validationData.metadata.extractedAt).toLocaleString("ko-KR")}
+                  {validationData.metadata.version && ` · 버전: ${validationData.metadata.version}`}
+                </p>
+              )}
+              <button type="button" onClick={() => setIsOpen(true)} className="gov-btn gov-btn-secondary">
+                검증 보고서 보기
+              </button>
+            </div>
           )}
-          <button
-            onClick={() => setIsConstraintModalOpen(true)}
-            style={{
-              marginTop: 12,
-              padding: "8px 16px",
-              borderRadius: 6,
-              border: "1px solid #333",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            제약 조건 확인
-          </button>
+
+          {/* GeoJSON 로드 완료 */}
+          {geojsonData && !isConstraintModalOpen && (
+            <div className="gov-card gov-result-preview">
+              <p className="gov-result-heading">
+                <span className="gov-result-icon" aria-hidden="true">✓</span>
+                GeoJSON 파일이 정상적으로 로드되었습니다
+              </p>
+              {geojsonData.properties && (
+                <p className="gov-result-meta">
+                  파일 형식: GeoJSON
+                  {geojsonData.properties.name && ` · 이름: ${geojsonData.properties.name}`}
+                  {geojsonData.properties.createdAt &&
+                    ` · 생성일: ${new Date(geojsonData.properties.createdAt).toLocaleString("ko-KR")}`}
+                </p>
+              )}
+              <button type="button" onClick={() => setIsConstraintModalOpen(true)} className="gov-btn gov-btn-secondary">
+                제약 조건 검증 결과 보기
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </main>
+
+      {/* 푸터 */}
+      <footer className="gov-footer">
+        <div className="gov-footer-inner">
+          <p className="gov-footer-text">
+            본 시스템은 경로·공간정보 데이터의 품질 검증 목적으로 제공됩니다.
+          </p>
+          <p className="gov-footer-copy">© 데이터 검증 시스템</p>
+        </div>
+      </footer>
 
       {/* 검증 보고서 모달 (JSON 파일용) */}
       {validationData && (
@@ -594,13 +544,8 @@ function App() {
         />
       )}
 
-      {/* 로딩 모달 */}
-      <LoadingModal
-        isOpen={isLoadingModalOpen}
-        onComplete={handleLoadingComplete}
-      />
+      <LoadingModal isOpen={isLoadingModalOpen} onComplete={handleLoadingComplete} />
 
-      {/* 제약 조건 검증 모달 (GeoJSON 파일용) */}
       {geojsonData && (
         <ConstraintValidationModal
           isOpen={isConstraintModalOpen}
@@ -608,7 +553,7 @@ function App() {
           geojsonData={geojsonData}
         />
       )}
-    </div>
+    </>
   );
 }
 
