@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- 배포 시 실제 사이트 URL로 변경하세요. -->
   <url>
     <loc>https://route-data-validation.vercel.app/</loc>
     <lastmod>2025-02-11</lastmod>
